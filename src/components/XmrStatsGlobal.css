@@ -1,0 +1,7 @@
+iframe::-webkit-scrollbar {
+  display: none !important;
+}
+iframe {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important;    /* Firefox */
+}

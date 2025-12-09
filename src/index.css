@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @font-face {
+    font-family: 'Fira Code';
+    src: url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
+  }
+}
+
+@layer components {
+  .bg-space {
+    background: linear-gradient(180deg, #020c1b 0%, #010914 100%);
+  }
+
+  body {
+    @apply text-white/80 font-sans bg-space;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px rgba(78, 224, 252, 0.3);
+  }
+  
+  .electric-text {
+    @apply text-electric text-glow;
+  }
+
+  .console-text {
+    @apply font-mono text-sky/80;
+  }
+  
+  .space-gradient {
+    background: linear-gradient(180deg, #020c1b 0%, #010914 100%);
+  }
+
+  .starfield {
+    background-image: radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                      radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0));
+    background-size: 200px 200px;
+    animation: twinkle 5s ease-in-out infinite;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 0.4; }
+  }
+
+  .animate-spin-slow {
+    animation: spin 3s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+}

@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+<head>
+    <title>Pac-Man</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta names="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon-precomposed" href="icon/ios_icon.png"/>
+    <link rel="icon" type="image/png" href="icon/favicon.png"/>
+    <style>
+        body {
+            margin:0;
+            background: #000000;
+        }
+        @font-face {
+            font-family: 'ArcadeR';
+            src: url('font/ARCADE_R.TTF');
+        }
+        #canvas-warning {
+            color: #FF0;
+            font-size: 1.5em;
+        }
+    </style>
+    <script>
+        // Set flag to indicate we're in wrapper mode
+        window.gameWrapperMode = true;
+    </script>
+    <script src="pacman.js"></script>
+    <script>
+        // Communication with parent window
+        var parentWindow = window.parent;
+        var currentScore = 0;
+        var lastScoreSent = 0;
+        var gameEnded = false;
+        var highScoreSet = false;
+
+        // Function to set high score from backend
+        function setHighScoreFromBackend(highScoreValue) {
+            if (typeof highScores !== 'undefined') {
+                // Replace default 10000 with backend value (don't use Math.max)
+                // Set high score for pacman mode (index 0 and 1 for normal and turbo)
+                if (highScoreValue > 0) {
+                    highScores[0] = highScoreValue;
+                    highScores[1] = highScoreValue;
+                } else {
+                    // If no backend value, set to 0 to hide the default 10000
+                    highScores[0] = 0;
+                    highScores[1] = 0;
+                }
+                if (typeof saveHighScores === 'function') {
+                    saveHighScores();
+                }
+                highScoreSet = true;
+                console.log('High score set from backend:', highScoreValue, 'Replaced default 10000');
+            }
+        }
+
+        // Listen for messages from parent
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'setHighScore') {
+                var highScoreValue = parseInt(event.data.highScore) || 0;
+                setHighScoreFromBackend(highScoreValue);
+            }
+        });
+
+        // Monitor score for real-time updates
+        function monitorGame() {
+            if (typeof getScore === 'function' && typeof getHighScore === 'function') {
+                try {
+                    var score = getScore();
+                    var highScore = getHighScore();
+                    
+                    // Update current score (send updates during gameplay)
+                    if (score !== currentScore) {
+                        currentScore = score;
+                        // Send score update to parent
+                        if (parentWindow && parentWindow !== window) {
+                            parentWindow.postMessage({
+                                type: 'scoreUpdate',
+                                score: score,
+                                highScore: highScore
+                            }, '*');
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error monitoring game:', e);
+                }
+            }
+        }
+        
+        // Reset game over flag when new game starts
+        function resetGameOverFlag() {
+            if (typeof state !== 'undefined' && typeof newGameState !== 'undefined') {
+                if (state === newGameState) {
+                    gameOverHandled = false;
+                    gameEnded = false;
+                }
+            }
+        }
+
+        // Function to initialize high score from backend before game loads
+        function initializeHighScore() {
+            // Wait for highScores array to be defined
+            if (typeof highScores !== 'undefined') {
+                // Override loadHighScores to prevent loading default 10000 from localStorage
+                if (typeof loadHighScores === 'function') {
+                    var originalLoadHighScores = loadHighScores;
+                    loadHighScores = function() {
+                        // Don't load from localStorage if we have a backend value
+                        // The backend value will be set via postMessage
+                        if (!highScoreSet) {
+                            originalLoadHighScores();
+                        }
+                    };
+                }
+                
+                console.log('High score initialization ready, waiting for backend value');
+            }
+        }
+
+        // Start monitoring after game loads
+        window.addEventListener('load', function() {
+            // Initialize high score immediately
+            initializeHighScore();
+            
+            // Wait for game to initialize, then set high score if available
+            setTimeout(function() {
+                // Try to set high score from localStorage only if no backend value
+                if (typeof loadHighScores === 'function' && !highScoreSet) {
+                    loadHighScores();
+                }
+                // Monitor score for real-time updates
+                setInterval(monitorGame, 500);
+                // Check for new game start to reset flags
+                setInterval(resetGameOverFlag, 1000);
+            }, 2000);
+        });
+
+        // Game over handling flag (shared scope)
+        var gameOverHandled = false;
+        
+        // Override setHighScore to notify parent (will be set after game loads)
+        var originalSetHighScore = null;
+        function overrideSetHighScore() {
+            if (typeof setHighScore === 'function' && !originalSetHighScore) {
+                originalSetHighScore = setHighScore;
+                window.setHighScore = function(highScore) {
+                    originalSetHighScore(highScore);
+                    if (parentWindow && parentWindow !== window) {
+                        parentWindow.postMessage({
+                            type: 'highScoreUpdate',
+                            highScore: highScore
+                        }, '*');
+                    }
+                };
+            }
+        }
+        
+        // Game over detection is now built directly into pacman.js
+        // No need for complex overrides - it will send gameEnd messages automatically
+        console.log('Game wrapper loaded - game over detection is built into pacman.js');
+    </script>
+</head>
+<body>
+    <div style='font-family: ArcadeR'> </div>
+    <canvas id='canvas'><div id="canvas-warning">Your browser does not support HTML Canvas.  Please upgrade!</div></canvas>
+    <canvas id='atlas' style="display:none"></canvas>
+</body>
+</html>
+

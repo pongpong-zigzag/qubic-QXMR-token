@@ -1,0 +1,39 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--no-optional"
+  NODE_OPTIONS = "--max_old_space_size=4096"
+
+# API proxy to Netlify Functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Handle SPA routing - must be first
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Redirect HTTP to HTTPS (Netlify handles this by default, but we'll keep it explicit)
+[[redirects]]
+  from = "http://*"
+  to = "https://qxmr.quest/:splat"
+  status = 301
+  force = true
+
+# Redirect www to non-www
+[[redirects]]
+  from = "https://www.qxmr.quest/*"
+  to = "https://qxmr.quest/:splat"
+  status = 301
+  force = true
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["node-fetch"]
