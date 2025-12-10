@@ -40,7 +40,7 @@ const PacmanGameWrapper: React.FC<PacmanGameWrapperProps> = ({ onClose }) => {
       // Check user state after refresh
       setTimeout(() => {
         if (user?.leaderboard_access !== '1') {
-          toast.success(`Game Over! Score: ${score} points. Your high score is saved, but you're not on the leaderboard. Pay 1000 QXMR to join!`);
+          toast.success(`Game Over! Score: ${score} points. Your high score is saved, but you're not on the leaderboard. Pay 10000 QXMR to join!`);
         } else {
           toast.success(`Game Over! Score saved: ${score} points`);
         }

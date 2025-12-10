@@ -9,7 +9,7 @@ interface BuyGamesModalProps {
   onPurchaseComplete: () => void;
 }
 
-const GAME_PRICE = 500000; // 500000 tokens per game
+const GAME_PRICE = 500000; // 500000 QXMR tokens per game
 
 const BuyGamesModal: React.FC<BuyGamesModalProps> = ({ isOpen, onClose, onPurchaseComplete }) => {
   const { wallet, connected } = useQubicConnect();
@@ -39,6 +39,7 @@ const BuyGamesModal: React.FC<BuyGamesModalProps> = ({ isOpen, onClose, onPurcha
       
       onClose();
       toast.loading('Processing transaction...', { id: 'buy-games' });
+      onPurchaseComplete();
     } catch (error) {
       console.error('Error initiating purchase:', error);
       toast.error('Failed to initiate game purchase');
@@ -47,86 +48,102 @@ const BuyGamesModal: React.FC<BuyGamesModalProps> = ({ isOpen, onClose, onPurcha
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-md bg-gradient-to-br from-gray-900 to-black rounded-lg border border-cyan-500/30 shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="relative bg-gradient-to-r from-cyan-500/20 via-blue-600/20 to-purple-600/20 p-6 border-b border-cyan-500/30">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-          >
-            <X size={24} />
-          </button>
-          <div className="flex items-center gap-3">
-            <ShoppingCart className="w-8 h-8 text-cyan-400" />
-            <h2 className="text-2xl font-bold text-white">
-              Buy More Games
-            </h2>
-          </div>
-        </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-xl">
+      <div className="relative w-full max-w-lg rounded-[32px] border border-white/15 bg-white/5 backdrop-blur-2xl shadow-[0_40px_120px_rgba(2,6,18,0.65)] overflow-hidden">
+        <div className="absolute inset-x-0 -top-24 h-48 bg-electric/20 blur-[140px] pointer-events-none z-0" aria-hidden />
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-5 right-5 z-10 rounded-full border border-white/20 bg-black/30 p-2 text-white/70 hover:text-white hover:border-white/40 transition"
+        >
+          <X size={18} />
+        </button>
 
-        {/* Content */}
-        <div className="p-6">
-          <div className="mb-6">
-            <p className="text-gray-300 mb-4">
-              Each game costs <span className="text-cyan-400 font-bold">500,000 Qubic</span> tokens.
-            </p>
-            
-            <div className="bg-gray-800/50 rounded-lg p-4 border border-cyan-500/20 mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Number of Games
-              </label>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setGamesToBuy(Math.max(1, gamesToBuy - 1))}
-                  className="w-10 h-10 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-bold transition-colors"
-                  disabled={gamesToBuy <= 1}
-                >
-                  -
-                </button>
-                <input
-                  type="number"
-                  min="1"
-                  value={gamesToBuy}
-                  onChange={(e) => setGamesToBuy(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-center font-bold"
-                />
-                <button
-                  onClick={() => setGamesToBuy(gamesToBuy + 1)}
-                  className="w-10 h-10 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-bold transition-colors"
-                >
-                  +
-                </button>
-              </div>
+        <div className="relative p-8 space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl bg-electric/15 p-3">
+              <ShoppingCart className="w-8 h-8 text-electric" />
             </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-electricLight/80">Arcade Credits</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-white">Buy More Games</h2>
+            </div>
+          </div>
 
-            <div className="bg-gradient-to-r from-cyan-500/20 to-blue-600/20 rounded-lg p-4 border border-cyan-500/30">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-300">Total Cost:</span>
-                <span className="text-2xl font-bold text-cyan-400">
-                  {totalPrice.toLocaleString()} Qubic
-                </span>
-              </div>
-              <div className="text-sm text-gray-400">
-                {gamesToBuy} game{gamesToBuy !== 1 ? 's' : ''} × 500,000 Qubic
-              </div>
+          <p className="text-sm text-white/80 leading-relaxed">
+            Each connected run costs <span className="text-electric font-semibold">500,000 QXMR</span>. Pick how many sessions you
+            want to preload and we’ll route the purchase through your Qubic wallet.
+          </p>
+
+          <div className="rounded-2xl border border-white/15 bg-white/5 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.35em] text-white/60">Number of games</p>
+              <span className="text-xs text-white/60">Min 1</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setGamesToBuy(Math.max(1, gamesToBuy - 1))}
+                className="w-12 h-12 rounded-2xl border border-white/15 bg-black/40 text-white text-xl font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:border-electric hover:text-electric transition"
+                disabled={gamesToBuy <= 1}
+              >
+                –
+              </button>
+              <input
+                type="number"
+                min="1"
+                value={gamesToBuy}
+                onChange={(e) => setGamesToBuy(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                className="flex-1 rounded-2xl border border-white/15 bg-black/40 px-4 py-3 text-center text-2xl font-semibold text-white focus:border-electric focus:outline-none"
+              />
+              <button
+                onClick={() => setGamesToBuy(gamesToBuy + 1)}
+                className="w-12 h-12 rounded-2xl border border-white/15 bg-black/40 text-white text-xl font-semibold hover:border-electric hover:text-electric transition"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/15 bg-white/5 p-5">
+              <p className="text-xs uppercase tracking-[0.35em] text-white/60 mb-1">Total cost</p>
+              <p className="text-3xl font-semibold text-electric">{totalPrice.toLocaleString()} QXMR</p>
+              <p className="text-xs text-white/60 mt-1">
+                {gamesToBuy} game{gamesToBuy !== 1 ? 's' : ''} × 500,000 QXMR
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-black/40 p-5">
+              <p className="text-xs uppercase tracking-[0.35em] text-white/60 mb-2">Wallet status</p>
+              {connected ? (
+                <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-100 break-all">
+                  {wallet?.publicKey}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-amber-300/40 bg-amber-300/10 px-4 py-3 text-xs text-amber-50">
+                  Connect your Qubic wallet to continue.
+                </div>
+              )}
             </div>
           </div>
 
           {!connected ? (
-            <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 text-yellow-200 text-sm">
-              Please connect your wallet to purchase games
+            <div className="rounded-2xl border border-amber-300/40 bg-amber-300/10 p-4 text-sm text-amber-50">
+              Please connect your wallet to purchase games.
             </div>
           ) : (
             <button
               onClick={handleBuyGames}
               disabled={isProcessing}
-              className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-orange-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="group w-full rounded-2xl border border-white/20 bg-gradient-to-r from-electric via-electricAccent to-cyan px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-lg shadow-cyan-500/30 transition-all duration-300 hover:translate-y-[-2px] hover:shadow-electric/40 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              <ShoppingCart className="w-5 h-5" />
-              {isProcessing ? 'Processing...' : `Buy ${gamesToBuy} Game${gamesToBuy !== 1 ? 's' : ''}`}
+              <ShoppingCart className="w-5 h-5 group-hover:animate-pulse" />
+              {isProcessing ? 'Authorizing…' : `Buy ${gamesToBuy} Game${gamesToBuy !== 1 ? 's' : ''}`}
             </button>
           )}
+
+          <p className="text-xs text-white/60 text-center">
+            Purchases settle directly on chain. Games appear as soon as the transaction confirms.
+          </p>
         </div>
       </div>
     </div>

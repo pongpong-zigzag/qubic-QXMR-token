@@ -106,6 +106,8 @@ export const saveTransaction = async (data: TransactionRequest): Promise<{
   success: boolean;
   transaction_saved: boolean;
   user_paid_updated: string;
+  games_added?: number;
+  games_remaining?: number;
   leaderboard_access_granted?: boolean;
 }> => {
   const response = await fetch(`${BACKEND_URL}/transaction`, {
@@ -135,6 +137,7 @@ export const updateGameScore = async (data: GameScoreRequest): Promise<{ success
     },
     body: JSON.stringify(data),
   });
+  console.log(response.json());
 
   if (!response.ok) {
     const error = await response.json();

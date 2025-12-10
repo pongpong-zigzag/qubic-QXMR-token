@@ -71,7 +71,7 @@ Update user data.
 ```json
 {
   "walletid": "USER_WALLET_ID",
-  "amount": "1000",
+  "amount": "10000",
   "highest": "500",
   ...
 }

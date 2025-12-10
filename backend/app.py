@@ -276,7 +276,7 @@ def leaderboard_endpoint():
 
 @app.route('/transaction', methods=['POST'])
 def transaction_endpoint():
-    """Save transaction. Handle leaderboard payment (1000 QXMR) or game purchases."""
+    """Save transaction. Handle leaderboard payment (10000 QXMR) or game purchases."""
     try:
         data = request.get_json()
         if not data:
@@ -311,8 +311,8 @@ def transaction_endpoint():
             user = create_user(walletid)
         
         # Check transaction type
-        LEADERBOARD_PRICE = 1000  # 1000 QXMR for leaderboard access
-        GAME_PRICE = 500000  # Old game purchase price (deprecated but kept for compatibility)
+        LEADERBOARD_PRICE = 10000  # 10000 QXMR for leaderboard access
+        GAME_PRICE = 50000  # Old game purchase price (deprecated but kept for compatibility)
         
         update_data = {}
         leaderboard_access_granted = False
@@ -405,31 +405,46 @@ def update_game_score_endpoint():
         # Always update highest score locally
         current_highest = float(user.get('highest', '0') or '0')
         new_highest = max(current_highest, float(score))
-        
-        # Update lastplayed timestamp
-        lastplayed = datetime.now().isoformat()
+
+        #Always get gameleft
+        current_gameleft = int(user.get('gameleft', '0') or '0')
         
         update_data = {
-            'highest': str(new_highest),
-            'lastplayed': lastplayed
+            'highest': str(new_highest)
         }
         
         # Only update amount (leaderboard score) if user has paid for access
-        if has_access:
+        if has_access and current_gameleft:
+
+            # Update lastplayed timestamp
+            lastplayed = datetime.now().isoformat()
+            update_data['lastplayed'] = lastplayed
+
             current_amount = float(user.get('amount', '0') or '0')
-            new_amount = current_amount + float(score)
+            new_amount = max(current_amount, float(score))
             update_data['amount'] = str(new_amount)
             
+            new_gameleft = current_gameleft - 1
+            update_data['gameleft'] = str(new_gameleft)
+
             # Also save to daily_scores for daily prize calculation
             # We track each game score separately, then sum them for daily totals
             today = date.today().isoformat()
             conn_daily = sqlite3.connect('daily_scores.db')
             cursor_daily = conn_daily.cursor()
             # Insert a new row for this game score (we'll sum them when querying)
-            cursor_daily.execute('''
+            cursor_daily.execute(
+                '''
                 INSERT INTO daily_scores (walletid, score_date, score)
                 VALUES (?, ?, ?)
-            ''', (walletid, today, float(score)))
+                ON CONFLICT(walletid, score_date)
+                DO UPDATE SET score = CASE
+                    WHEN excluded.score > daily_scores.score THEN excluded.score
+                    ELSE daily_scores.score
+                END
+                ''',
+                (walletid, today, float(score)),
+            )
             conn_daily.commit()
             conn_daily.close()
         else:

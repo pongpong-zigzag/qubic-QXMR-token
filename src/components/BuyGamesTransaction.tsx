@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQubicConnect } from './connect/QubicConnectContext';
-import { useWalletConnect } from './connect/WalletConnectContext';
 import { QubicTransaction } from '@qubic-lib/qubic-ts-library/dist/qubic-types/QubicTransaction';
+import { QubicTransferAssetPayload } from '@qubic-lib/qubic-ts-library/dist/qubic-types/transacion-payloads/QubicTransferAssetPayload';
+import { QubicDefinitions } from "@qubic-lib/qubic-ts-library/dist/QubicDefinitions";
 import { Long } from '@qubic-lib/qubic-ts-library/dist/qubic-types/Long';
 import { fetchTickInfo, broadcastTx, fetchBalance } from '../services/rpc.service';
 import { saveTransaction } from '../services/backend.service';
@@ -11,47 +12,47 @@ interface BuyGamesTransactionProps {
   onPurchaseComplete: () => void;
 }
 
+const GAME_PRICE = 50000; // 500,000 QXMR per paid game
 const LEADERBOARD_PRICE = 10000; // 10,000 QXMR for leaderboard access
 const RECIPIENT_ADDRESS = 'QXMRTKTZXQPNZDZFNYQZBYCRMOGDZPNMBIBOHHOMBHSDJYQAMPVKVEIESLAL'; // QXMR recipient address
-const TOKEN_CONTRACT = 'QXMRTKAIIGLUREPIQPCMHCKWSIPDTUYFCFNYXQLTECSUJVYEMMDELBMDOEYB'; // QXMR token contract
+const BUY_EVENT = 'buyGames';
+const PAY_EVENT = 'payLeaderboard';
+
+const glassToastStyle = {
+  style: {
+    background: 'rgba(4, 7, 18, 0.92)',
+    color: '#ecfeff',
+    border: '1px solid rgba(78, 224, 252, 0.35)',
+    backdropFilter: 'blur(10px)',
+    fontSize: '0.85rem',
+    letterSpacing: '0.02em',
+  },
+};
+
+const withLoadingToast = (id: string, message: string) =>
+  toast.loading(message, { id, ...glassToastStyle });
+
+const withSuccessToast = (message: string) =>
+  toast.success(message, glassToastStyle);
+
+const withErrorToast = (message: string) =>
+  toast.error(message, glassToastStyle);
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Unknown error';
 
 const BuyGamesTransaction: React.FC<BuyGamesTransactionProps> = ({ onPurchaseComplete }) => {
   const { connected, wallet, getSignedTx } = useQubicConnect();
-  const { sendQubic, isConnected } = useWalletConnect();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // This component listens for buy games requests and leaderboard payment requests
-  React.useEffect(() => {
-    const handleBuyGamesRequest = async (event: CustomEvent) => {
-      const { games } = event.detail;
-      if (!connected || !wallet || !games) {
-        toast.error('Please connect your wallet first');
-        return;
-      }
-
-      await handlePurchase(games);
-    };
-
-    const handleLeaderboardPaymentRequest = async (event: CustomEvent) => {
-      if (!connected || !wallet) {
-        toast.error('Please connect your wallet first');
-        return;
-      }
-
-      await handleLeaderboardPayment();
-    };
-
-    window.addEventListener('buyGames' as any, handleBuyGamesRequest as EventListener);
-    window.addEventListener('payLeaderboard' as any, handleLeaderboardPaymentRequest as EventListener);
-    return () => {
-      window.removeEventListener('buyGames' as any, handleBuyGamesRequest as EventListener);
-      window.removeEventListener('payLeaderboard' as any, handleLeaderboardPaymentRequest as EventListener);
-    };
-  }, [connected, wallet]);
-
-  const handleLeaderboardPayment = async () => {
+  const handleLeaderboardPayment = useCallback(async () => {
     if (!connected || !wallet) {
-      toast.error('Please connect your wallet first');
+      withErrorToast('Please connect your wallet first.');
+      return;
+    }
+
+    if (isProcessing) {
+      withErrorToast('Another transaction is in flight. Please wait.');
       return;
     }
 
@@ -60,20 +61,20 @@ const BuyGamesTransaction: React.FC<BuyGamesTransactionProps> = ({ onPurchaseCom
 
     try {
       // Check balance before sending transaction
-      toast.loading('Checking balance...', { id: 'balance-check' });
+      withLoadingToast('balance-check', 'Checking balance…');
       const balanceData = await fetchBalance(wallet.publicKey);
       const balance = balanceData.balance;
-      const availableBalance = (balance?.incomingAmount || 0) - (balance?.outgoingAmount || 0);
+      const availableBalance = Number(balance?.numberOfUnits ?? 0);
       
       toast.dismiss('balance-check');
       
       if (availableBalance < totalAmount) {
-        toast.error(`Insufficient balance. You have ${availableBalance} Qubic, but need ${totalAmount} QXMR for leaderboard access.`);
+        withErrorToast(`You need ${totalAmount.toLocaleString()} QXMR but only have ${availableBalance.toLocaleString()}.`);
         setIsProcessing(false);
         return;
       }
       
-      toast.success(`Balance: ${availableBalance} Qubic`, { duration: 2000 });
+      withSuccessToast(`Balance verified • ${availableBalance.toLocaleString()} QXMR`);
 
       // Get current tick
       const tickInfo = await fetchTickInfo();
@@ -90,21 +91,30 @@ const BuyGamesTransaction: React.FC<BuyGamesTransactionProps> = ({ onPurchaseCom
       const destAddress = RECIPIENT_ADDRESS.toUpperCase().trim();
       const amountLong = new Long(totalAmount);
 
+      const payloadBuilder = new QubicTransferAssetPayload()
+        .setIssuer(balance?.issuerIdentity ?? '')
+        .setNewOwnerAndPossessor(destAddress)
+        .setAssetName(balance?.assetName ?? '')
+        .setNumberOfUnits(amountLong);
+      const payload = payloadBuilder.getTransactionPayload();
+
       const tx = new QubicTransaction()
         .setSourcePublicKey(sourceAddress)
-        .setDestinationPublicKey(destAddress)
+        .setDestinationPublicKey(QubicDefinitions.QX_ADDRESS)
         .setAmount(amountLong)
         .setTick(targetTick)
-        .setInputType(0)
-        .setInputSize(0);
+        .setInputType(QubicDefinitions.QX_TRANSFER_ASSET_INPUT_TYPE)
+        .setInputSize(payload.getPackageSize())
+        .setAmount(QubicDefinitions.QX_TRANSFER_ASSET_FEE)
+        .setPayload(payload);
 
       // Sign the transaction
-      toast.loading('Signing transaction...', { id: 'signing' });
+      withLoadingToast('signing', 'Awaiting signature…');
       const signedTxResult = await getSignedTx(tx);
       const signedTx = signedTxResult.tx;
 
       // Broadcast the transaction
-      toast.loading('Broadcasting transaction...', { id: 'broadcasting' });
+      withLoadingToast('broadcasting', 'Broadcasting to Qubic network…');
       const broadcastResult = await broadcastTx(signedTx);
 
       toast.dismiss('signing');
@@ -123,32 +133,36 @@ const BuyGamesTransaction: React.FC<BuyGamesTransactionProps> = ({ onPurchaseCom
             col2: '1',
           });
           
-          toast.dismiss('pay-leaderboard');
           if (result.leaderboard_access_granted) {
-            toast.success('Leaderboard access granted! Your scores will now appear on the leaderboard.');
+          withSuccessToast('Leaderboard access granted. Welcome to the hall-of-fame.');
           } else {
-            toast.success('Transaction successful! Leaderboard access will be granted shortly.');
+            withSuccessToast('Transaction received. Access will unlock shortly.');
           }
           onPurchaseComplete();
         } catch (error) {
           console.error('Error saving transaction:', error);
-          toast.dismiss('pay-leaderboard');
-          toast.error('Transaction sent but failed to grant access. Please contact support.');
+          withErrorToast('Tx saved but access failed. Ping support with your hash.');
         }
       } else {
-        toast.error('Transaction failed to broadcast');
+        withErrorToast('Broadcast failed — please retry once the network settles.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error processing leaderboard payment:', error);
-      toast.error(`Transaction failed: ${error?.message || 'Unknown error'}`);
+      withErrorToast(`Transaction failed: ${getErrorMessage(error)}`);
     } finally {
       setIsProcessing(false);
+      toast.dismiss('pay-leaderboard');
     }
-  };
+  }, [connected, wallet, getSignedTx, isProcessing, onPurchaseComplete]);
 
-  const handlePurchase = async (games: number = 1) => {
+  const handlePurchase = useCallback(async (games: number = 1) => {
     if (!connected || !wallet) {
-      toast.error('Please connect your wallet first');
+      withErrorToast('Please connect your wallet first.');
+      return;
+    }
+
+    if (isProcessing) {
+      withErrorToast('Another transaction is in flight. Please wait.');
       return;
     }
 
@@ -156,6 +170,20 @@ const BuyGamesTransaction: React.FC<BuyGamesTransactionProps> = ({ onPurchaseCom
     const totalAmount = GAME_PRICE * games;
 
     try {
+      withLoadingToast('balance-check', 'Checking balance…');
+      const balanceData = await fetchBalance(wallet.publicKey);
+      const balance = balanceData.balance;
+      const availableBalance = Number(balance?.numberOfUnits ?? 0);
+      
+      toast.dismiss('balance-check');
+      
+      if (availableBalance < totalAmount) {
+        withErrorToast(`You need ${totalAmount.toLocaleString()} QXMR but only have ${availableBalance.toLocaleString()}.`);
+        setIsProcessing(false);
+        return;
+      }
+      
+      withSuccessToast(`Balance verified • ${availableBalance.toLocaleString()} QXMR`);
       // Get current tick
       const tickInfo = await fetchTickInfo();
       let currentTick = Number(tickInfo.tick);
@@ -169,21 +197,30 @@ const BuyGamesTransaction: React.FC<BuyGamesTransactionProps> = ({ onPurchaseCom
       const destAddress = RECIPIENT_ADDRESS.toUpperCase().trim();
       const amountLong = new Long(totalAmount);
 
+      const payloadBuilder = new QubicTransferAssetPayload()
+        .setIssuer(balance?.issuerIdentity ?? '')
+        .setNewOwnerAndPossessor(destAddress)
+        .setAssetName(balance?.assetName ?? '')
+        .setNumberOfUnits(amountLong);
+      const payload = payloadBuilder.getTransactionPayload();
+
       const tx = new QubicTransaction()
         .setSourcePublicKey(sourceAddress)
-        .setDestinationPublicKey(destAddress)
+        .setDestinationPublicKey(QubicDefinitions.QX_ADDRESS)
         .setAmount(amountLong)
         .setTick(targetTick)
-        .setInputType(0)
-        .setInputSize(0);
+        .setInputType(QubicDefinitions.QX_TRANSFER_ASSET_INPUT_TYPE)
+        .setInputSize(payload.getPackageSize())
+        .setAmount(QubicDefinitions.QX_TRANSFER_ASSET_FEE)
+        .setPayload(payload);
 
       // Sign the transaction
-      toast.loading('Signing transaction...', { id: 'signing' });
+      withLoadingToast('signing', 'Awaiting signature…');
       const signedTxResult = await getSignedTx(tx);
       const signedTx = signedTxResult.tx;
 
       // Broadcast the transaction
-      toast.loading('Broadcasting transaction...', { id: 'broadcasting' });
+      withLoadingToast('broadcasting', 'Broadcasting to Qubic network…');
       const broadcastResult = await broadcastTx(signedTx);
 
       toast.dismiss('signing');
@@ -202,28 +239,55 @@ const BuyGamesTransaction: React.FC<BuyGamesTransactionProps> = ({ onPurchaseCom
             col2: games.toString(),
           });
           
-          toast.dismiss('buy-games');
-          if (result.games_added && result.games_added > 0) {
-            toast.success(`Transaction successful! ${result.games_added} game(s) added to your account.`);
+      if (result.games_added && result.games_added > 0) {
+        withSuccessToast(`${result.games_added} game(s) now live in your account.`);
           } else {
-            toast.success('Transaction successful! Games will be added shortly.');
+            withSuccessToast('Transaction confirmed. Games will populate shortly.');
           }
           onPurchaseComplete();
         } catch (error) {
           console.error('Error saving transaction:', error);
-          toast.dismiss('buy-games');
-          toast.error('Transaction sent but failed to update games. Please contact support.');
+          withErrorToast('Tx sent but account update failed. Please contact support.');
         }
       } else {
-        toast.error('Transaction failed to broadcast');
+        withErrorToast('Broadcast failed — try again once the network stabilizes.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error processing purchase:', error);
-      toast.error(`Transaction failed: ${error?.message || 'Unknown error'}`);
+      withErrorToast(`Transaction failed: ${getErrorMessage(error)}`);
     } finally {
       setIsProcessing(false);
+      toast.dismiss('buy-games');
     }
-  };
+  }, [connected, wallet, getSignedTx, isProcessing, onPurchaseComplete]);
+
+  // This component listens for buy games requests and leaderboard payment requests
+  React.useEffect(() => {
+    const buyListener: EventListener = (event) => {
+      const customEvent = event as CustomEvent<{ games?: number }>;
+      if (!connected || !wallet) {
+        withErrorToast('Please connect your wallet first.');
+        return;
+      }
+      const gamesToBuy = customEvent.detail?.games ?? 1;
+      void handlePurchase(gamesToBuy);
+    };
+
+    const leaderboardListener: EventListener = () => {
+      if (!connected || !wallet) {
+        withErrorToast('Please connect your wallet first.');
+        return;
+      }
+      void handleLeaderboardPayment();
+    };
+
+    window.addEventListener(BUY_EVENT, buyListener);
+    window.addEventListener(PAY_EVENT, leaderboardListener);
+    return () => {
+      window.removeEventListener(BUY_EVENT, buyListener);
+      window.removeEventListener(PAY_EVENT, leaderboardListener);
+    };
+  }, [connected, wallet, handlePurchase, handleLeaderboardPayment]);
 
   // This component doesn't render anything, it just handles transactions
   return null;
