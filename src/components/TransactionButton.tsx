@@ -24,7 +24,7 @@ const TransactionButton: React.FC<TransactionButtonProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
 
   const recipientAddress = 'LDDHUWSEZBINQAYYMGXXGDLITHQCEJOVWUGDJGRDGDDHGLLGMFFFCEUDZITM'; // Valid Qubic address
-  const amount = 10000; // 10000 Qubic tokens
+  const amount = 10000; // 10000 QXMR tokens
 
   const handleTransaction = async () => {
     if (!connected || !wallet) {
@@ -50,12 +50,12 @@ const TransactionButton: React.FC<TransactionButtonProps> = ({
       toast.dismiss('balance-check');
       
       if (availableBalance < transactionAmount) {
-        toast.error(`Insufficient balance. You have ${availableBalance} Qubic, but need ${transactionAmount}`);
+        toast.error(`Insufficient balance. You have ${availableBalance} QXMR, but need ${transactionAmount}`);
         setIsProcessing(false);
         return;
       }
       
-      toast.success(`Balance: ${availableBalance} Qubic`, { duration: 2000 });
+      toast.success(`Balance: ${availableBalance} QXMR`, { duration: 2000 });
       
       // Get current tick
       const tickInfo = await fetchTickInfo();

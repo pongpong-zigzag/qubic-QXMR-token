@@ -39,26 +39,39 @@ export const fetchTickInfo = async (): Promise<TickInfo> => {
 
 export interface Balance {
   balance?: {
-    incomingAmount?: number;
-    outgoingAmount?: number;
-    numberOfIncomingTransfers?: number;
-    numberOfOutgoingTransfers?: number;
+    numberOfUnits?: number;
+    type?: number;
+    issuerIdentity?: string;
+    assetName?: string;
   };
 }
 
 export const fetchBalance = async (publicId: string): Promise<Balance> => {
   try {
-    const balanceResult = await fetch(`${RPC_URL}/v1/balances/${publicId}`);
-    if (!balanceResult.ok) {
-      console.warn("fetchBalance: HTTP error", balanceResult.status);
+
+    const QXMR_ISSUER = "QXMRTKAIIGLUREPIQPCMHCKWSIPDTUYFCFNYXQLTECSUJVYEMMDELBMDOEYB";
+
+    const res = await fetch(`${RPC_URL}/v1/assets/${publicId}/owned`);
+    if (!res.ok) {
+      console.warn("fetchBalance: HTTP error", res.status);
       return {};
     }
-    const balance = await balanceResult.json();
-    if (!balance || !balance.balance) {
+    const payload = await res.json();
+    const qxmr = payload.ownedAssets.find(
+      (asset: any) => asset?.data?.issuedAsset?.name === 'QXMR' && asset?.data?.issuedAsset?.issuerIdentity === QXMR_ISSUER && asset?.data?.type === 2
+    );
+    if (!qxmr || !qxmr.data?.numberOfUnits) {
       console.warn("fetchBalance: Invalid balance response structure");
       return {};
     }
-    return balance;
+    return {
+      balance: {
+        numberOfUnits: Number(qxmr.data?.numberOfUnits),
+        type: Number(qxmr.data?.type),
+        issuerIdentity: String(qxmr.data?.issuedAsset?.issuerIdentity),
+        assetName: String(qxmr.data?.issuedAsset?.name),
+      }
+    };
   } catch (error) {
     console.error("Error fetching balance:", error);
     return {};

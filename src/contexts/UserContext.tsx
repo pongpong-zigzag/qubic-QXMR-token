@@ -46,7 +46,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const result = await updateGameScore({
         walletid: wallet.publicKey,
-        score,
+        score: score,
       });
       setUser(result.user);
     } catch (err) {
