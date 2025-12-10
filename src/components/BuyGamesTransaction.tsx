@@ -12,8 +12,8 @@ interface BuyGamesTransactionProps {
   onPurchaseComplete: () => void;
 }
 
-const GAME_PRICE = 50000; // 500,000 QXMR per paid game
-const LEADERBOARD_PRICE = 10000; // 10,000 QXMR for leaderboard access
+const GAME_PRICE = 500; // 500,000 QXMR per paid game
+const LEADERBOARD_PRICE = 100; // 10,000 QXMR for leaderboard access
 const RECIPIENT_ADDRESS = 'QXMRTKTZXQPNZDZFNYQZBYCRMOGDZPNMBIBOHHOMBHSDJYQAMPVKVEIESLAL'; // QXMR recipient address
 const BUY_EVENT = 'buyGames';
 const PAY_EVENT = 'payLeaderboard';

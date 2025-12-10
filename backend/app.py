@@ -311,8 +311,8 @@ def transaction_endpoint():
             user = create_user(walletid)
         
         # Check transaction type
-        LEADERBOARD_PRICE = 10000  # 10000 QXMR for leaderboard access
-        GAME_PRICE = 50000  # Old game purchase price (deprecated but kept for compatibility)
+        LEADERBOARD_PRICE = 100  # 10000 QXMR for leaderboard access
+        GAME_PRICE = 500  # Old game purchase price (deprecated but kept for compatibility)
         
         update_data = {}
         leaderboard_access_granted = False

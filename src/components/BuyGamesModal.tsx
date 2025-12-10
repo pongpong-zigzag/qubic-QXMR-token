@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState} from 'react';
 import { X, ShoppingCart } from 'lucide-react';
 import { useQubicConnect } from './connect/QubicConnectContext';
 import { toast } from 'react-hot-toast';
@@ -43,6 +43,7 @@ const BuyGamesModal: React.FC<BuyGamesModalProps> = ({ isOpen, onClose, onPurcha
     } catch (error) {
       console.error('Error initiating purchase:', error);
       toast.error('Failed to initiate game purchase');
+    } finally {
       setIsProcessing(false);
     }
   };
