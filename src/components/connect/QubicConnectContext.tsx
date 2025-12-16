@@ -10,7 +10,7 @@ import { DEFAULT_TX_SIZE } from "../../constants";
 import { toast } from "react-hot-toast";
 import { getSnap } from "./utils/snap";
 import { connectSnap } from "./utils/snap";
-// @ts-expect-error qubic vault package lacks typings
+// @ts-ignore
 import { QubicVault } from "@qubic-lib/qubic-ts-vault-library";
 
 interface Wallet {
@@ -44,7 +44,7 @@ export function QubicConnectProvider({ children }: QubicConnectProviderProps) {
   const [connected, setConnected] = useState<boolean>(false);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [showConnectModal, setShowConnectModal] = useState<boolean>(false);
-  const { signTransaction, disconnect: walletConnectDisconnect } = useWalletConnect();
+  const { signTransaction } = useWalletConnect();
   const [state, dispatch] = useContext(MetaMaskContext);
   const qHelper = new QubicHelper();
 
@@ -69,12 +69,6 @@ export function QubicConnectProvider({ children }: QubicConnectProviderProps) {
   };
 
   const disconnect = (): void => {
-    if (wallet?.connectType === "walletconnect") {
-      walletConnectDisconnect()
-        .catch((error) => {
-          console.error("Failed to terminate WalletConnect session:", error);
-        });
-    }
     localStorage.removeItem("wallet");
     setWallet(null);
     setConnected(false);
@@ -152,7 +146,8 @@ export function QubicConnectProvider({ children }: QubicConnectProviderProps) {
         const from = wallet.publicKey || txFrom;
         const to = txTo;
         const txAmount = Number(decodedTx.amount.getNumber());
-        const payloadBase64 = uint8ArrayToBase64(decodedTx.payload.getPackageData());
+        const payloadBytes = decodedTx?.payload?.getPackageData?.();
+        const payloadBase64 = payloadBytes ? uint8ArrayToBase64(payloadBytes) : "";
         
         console.log('WalletConnect signing:', {
           walletPublicKey: wallet.publicKey,
@@ -231,23 +226,36 @@ export function QubicConnectProvider({ children }: QubicConnectProviderProps) {
 
   const vaultFileConnect = async (selectedFile: File, password: string): Promise<QubicVault> => {
     if (!selectedFile || !password) {
-      throw new Error("Vault file and password are required.");
+      alert("Please select a file and enter a password.");
+      return;
     }
+    const vault = new QubicVault();
 
-    try {
-      const vault = new QubicVault();
-      await vault.importAndUnlock(
-        true, // selectedFileIsVaultFile
-        password,
-        null, // selectedConfigFile
-        selectedFile,
-        true, // unlock
-      );
-      return vault;
-    } catch (error) {
-      console.error("Error unlocking vault:", error);
-      throw error instanceof Error ? error : new Error("Unable to unlock vault file.");
-    }
+    const fileReader = new FileReader();
+
+    fileReader.onload = async () => {
+      try {
+        await vault.importAndUnlock(
+          true, // selectedFileIsVaultFile: boolean,
+          password,
+          null, // selectedConfigFile: File | null = null,
+          selectedFile, // File | null = null,
+          true, // unlock: boolean = false
+        );
+        // now we switch view to select one of the seeds
+        return vault;
+      } catch (error) {
+        console.error("Error unlocking vault:", error);
+        alert("Failed to unlock the vault. Please check your password and try again.");
+      }
+    };
+
+    fileReader.onerror = (error) => {
+      console.error("Error reading file:", error);
+      alert("Failed to read the file. Please try again.");
+    };
+
+    fileReader.readAsArrayBuffer(selectedFile);
   };
 
   const contextValue: QubicConnectContextType = {
@@ -271,7 +279,6 @@ export function QubicConnectProvider({ children }: QubicConnectProviderProps) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useQubicConnect(): QubicConnectContextType {
   const context = useContext(QubicConnectContext);
   if (context === undefined) {
@@ -279,3 +286,4 @@ export function useQubicConnect(): QubicConnectContextType {
   }
   return context;
 }
+

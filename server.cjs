@@ -11,6 +11,8 @@ const PORT = process.env.PORT || 3001;
 
 const DB_PATH = path.join(__dirname, 'raffles.json');
 
+const WALLET_ID_REGEX = /^[A-Z]{60}$/;
+
 // --- Database Helpers ---
 const readRaffles = () => {
   try {
@@ -32,6 +34,81 @@ const writeRaffles = (data) => {
 
 app.use(cors());
 app.use(express.json());
+
+const getGoogleSheetsClient = () => {
+  const credsPath = process.env.GOOGLE_CREDENTIALS_PATH || path.resolve(process.cwd(), 'google-credentials.json');
+  const credsRaw = fs.readFileSync(credsPath, 'utf8');
+  const credsObj = JSON.parse(credsRaw);
+  let auth;
+  try {
+    auth = new google.auth.GoogleAuth({
+      credentials: credsObj,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+  } catch {
+    auth = new google.auth.JWT(
+      credsObj.client_email,
+      null,
+      credsObj.private_key,
+      ['https://www.googleapis.com/auth/spreadsheets']
+    );
+  }
+  return google.sheets({ version: 'v4', auth });
+};
+
+app.get('/api/power-players', async (req, res) => {
+  try {
+    const SHEET_ID = process.env.POWER_PLAYERS_SHEET_ID;
+    if (!SHEET_ID) return res.status(500).json({ error: 'POWER_PLAYERS_SHEET_ID is not configured' });
+    const VERIFIED_TAB = process.env.POWER_PLAYERS_VERIFIED_TAB || 'Verified';
+
+    const sheets = getGoogleSheetsClient();
+    const sheetResp = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: `${VERIFIED_TAB}!A:B`,
+    });
+
+    const values = sheetResp.data.values || [];
+    const items = values
+      .map((row) => ({
+        walletId: typeof row?.[0] === 'string' ? row[0].trim().toUpperCase() : '',
+        verifiedAt: typeof row?.[1] === 'string' ? row[1] : null,
+      }))
+      .filter((x) => WALLET_ID_REGEX.test(x.walletId));
+
+    return res.status(200).json(items);
+  } catch (e) {
+    return res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
+  }
+});
+
+app.post('/api/power-players/submit', async (req, res) => {
+  try {
+    const { walletId } = req.body || {};
+    const normalized = typeof walletId === 'string' ? walletId.trim().toUpperCase() : '';
+    if (!WALLET_ID_REGEX.test(normalized)) {
+      return res.status(400).json({ error: 'Invalid wallet ID format. Must be 60 uppercase letters.' });
+    }
+
+    const SHEET_ID = process.env.POWER_PLAYERS_SHEET_ID;
+    if (!SHEET_ID) return res.status(500).json({ error: 'POWER_PLAYERS_SHEET_ID is not configured' });
+    const SUBMISSIONS_TAB = process.env.POWER_PLAYERS_SUBMISSIONS_TAB || 'Submissions';
+
+    const sheets = getGoogleSheetsClient();
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: `${SUBMISSIONS_TAB}!A:B`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[new Date().toISOString(), normalized]],
+      },
+    });
+
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
+  }
+});
 
 // --- API Endpoints ---
 

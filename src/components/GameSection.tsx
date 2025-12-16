@@ -29,6 +29,28 @@ const GameSection = () => {
   const hasLeaderboardAccess = user?.leaderboard_access === '1';
   const gamesRemaining = user ? Number(user.gameleft || '0') : 0;
 
+  useEffect(() => {
+    if (!connected) return;
+
+    refreshUser();
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshUser();
+      }
+    };
+
+    window.addEventListener('focus', refreshUser);
+    document.addEventListener('visibilitychange', onVisibility);
+    const intervalId = window.setInterval(refreshUser, 30000);
+
+    return () => {
+      window.removeEventListener('focus', refreshUser);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.clearInterval(intervalId);
+    };
+  }, [connected, refreshUser]);
+
   const formatNumber = (value?: string | number | null, digits = 0) => {
     if (value === undefined || value === null) {
       return '0';
@@ -46,23 +68,23 @@ const GameSection = () => {
     icon: React.ElementType;
   }[] = [
     {
-      title: 'Modern Classic',
-      description: 'CRT-inspired palette, crisp sound, and buttery animations.',
+      title: 'Epoch Battles',
+      description: 'High scores are reset each epoch for fair competition.',
       icon: Sparkles,
     },
     {
       title: 'Wallet Optional',
-      description: 'Drop in for free play, then connect to sync scores later.',
+      description: 'Drop in for free play. Connect to sync scores to leaderboard.',
       icon: Shield,
     },
     {
-      title: 'Leaderboard Ready',
-      description: 'Opt-in runs stream straight to the global leaderboard.',
+      title: 'Weekly Rewards',
+      description: '10m Qubic awarded weekly to top players.',
       icon: Trophy,
     },
     {
       title: 'Smooth Controls',
-      description: 'Arrow keys and WASD supported with <12ms input lag.',
+      description: 'Arrow keys and touchscreen supported for seamless gameplay on all devices.',
       icon: Clock3,
     },
   ];
@@ -202,7 +224,7 @@ const GameSection = () => {
                     <div>
                       <p className="text-xs uppercase tracking-[0.35em] text-electricLight/80">Arcade Hub</p>
                       <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-electric via-electricAccent to-cyan bg-clip-text text-transparent">
-                        Play Pacman
+                        Play Qxmr Quest
                       </h2>
                     </div>
                   </div>
@@ -211,8 +233,7 @@ const GameSection = () => {
                   </span>
                 </div>
                 <p className="mt-6 text-lg text-electricLight/80 max-w-2xl">
-                  A modern, glassy take on the cabinet favorite. Practice instantly, connect when you are ready, and
-                  push for leaderboard glory.
+                  Experience the classic arcade game with a Qubic twist. Test your skills and aim for the high score!
                 </p>
 
                 <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -265,10 +286,10 @@ const GameSection = () => {
                   )}
                 </div>
 
-                <div className="mt-8 flex flex-wrap gap-3">
+                <div className="mt-8 flex flex-wrap justify-center gap-3">
                   <button
                     onClick={() => setIsGameOpen(true)}
-                    className="group flex items-center gap-2 rounded-2xl border border-white/20 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 px-7 py-3 text-sm font-semibold uppercase tracking-wide text-white shadow-lg shadow-cyan-400/30 transition-all duration-300 hover:translate-y-[-2px] hover:shadow-indigo-500/40"
+                    className="group flex items-center gap-2 rounded-2xl border border-white/20 bg-[#7CF8FF] hover:bg-[#9CFCFF] px-7 py-3 text-sm font-semibold uppercase tracking-wide text-slate-900 shadow-lg transition-all duration-300 hover:translate-y-[-2px]"
                   >
                     <Play className="h-4 w-4 group-hover:animate-pulse" />
                     Play GAME
@@ -282,10 +303,10 @@ const GameSection = () => {
                   </button>
                   <button
                     onClick={handleBuyGames}
-                    className="flex items-center gap-2 rounded-2xl border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 transition-all duration-300 hover:border-cyan-300/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 shadow-lg transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
                     disabled={!connected}
                   >
-                    <ShoppingCart className="h-4 w-4 text-cyan-300" />
+                    <ShoppingCart className="h-4 w-4" />
                     Buy Plays
                   </button>
                   {connected && !hasLeaderboardAccess && (
@@ -334,14 +355,16 @@ const GameSection = () => {
                 <div className="absolute inset-0 retro-grid opacity-40" aria-hidden="true" />
                 <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 via-transparent to-purple-500/25" />
                 <div className="absolute inset-4 rounded-[24px] border border-white/10 bg-white/5 backdrop-blur-2xl flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="relative inline-flex items-center justify-center">
-                      <div className="h-28 w-28 rounded-full border-4 border-dashed border-yellow-300/40 animate-spin-slow" />
-                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-yellow-300/10">
-                        <Gamepad2 className="h-10 w-10 text-yellow-300 animate-pulse" />
-                      </div>
-                    </div>
-                    <p className="mt-4 text-sm text-white/70">Overlay launches in a new glassy window.</p>
+                  <div className="text-center space-y-1 text-white/80 text-sm">
+                    <p className="font-semibold text-base">
+                      🕹️Play for free!🕹️
+                    </p>
+                    <p>To join leaderboard, connect your Qubic wallet.</p>
+                    <p>Games are 10,000 QXMR each.</p>
+                    <p className="mt-2 font-semibold">Top 3 scores at the end of each epoch will receive Qubic:</p>
+                    <p>🥇 1st place 6m</p>
+                    <p>🥈 2nd place 3m</p>
+                    <p>🥉 3rd place 1m</p>
                   </div>
                 </div>
 

@@ -9,11 +9,11 @@ interface PayLeaderboardModalProps {
   onPaymentComplete: () => void;
 }
 
-const LEADERBOARD_PRICE = 10000; // 10,000 QXMR
+const LEADERBOARD_PRICE = 25000; // 25,000 QXMR
 const BENEFITS = [
   'Scores stream straight to the live leaderboard',
-  'Eligible for daily 1,000,000 Qubic prize pools',
-  'Lifetime tracking of high scores & streaks',
+  'Eligible for weekly 10,000,000 Qubic prize pools',
+  'Tracking of high scores & streaks',
   'Unlimited practice + premium stats overlays',
 ];
 
@@ -78,7 +78,7 @@ const PayLeaderboardModal: React.FC<PayLeaderboardModalProps> = ({ isOpen, onClo
               </div>
             </div>
             <span className="rounded-full border border-white/20 px-4 py-1.5 text-xs font-semibold tracking-[0.3em] text-white/80">
-              10,000 QXMR
+              25,000 QXMR
             </span>
           </div>
 

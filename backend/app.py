@@ -11,6 +11,7 @@ CORS(app, resources={
     r"/*": {
         "origins": [
             "https://frontend.qxmr.quest",
+            "https://www.qxmr.quest",
             "https://admin.qxmr.quest",
             "http://localhost:5173",  # For local development
             "http://localhost:5174"

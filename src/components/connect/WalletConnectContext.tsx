@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useRef,useEffect, useState } from "react";
 import SignClient from "@walletconnect/sign-client";
 import { WalletConnectAccount } from "./types/account";
 import toast from "react-hot-toast";
@@ -12,6 +12,7 @@ interface WalletConnectContextType {
   disconnect: () => Promise<void>;
   requestAccounts: () => Promise<WalletConnectAccount[]>;
   sendQubic: (params: { from: string; to: string; amount: number }) => Promise<any>;
+  sendAsset: (params: { from: string; to: string; assetName: string; issuer: string; amount: number }) => Promise<any>;
   signTransaction: (params: {
     from: string;
     to: string;
@@ -35,7 +36,10 @@ export function WalletConnectProvider({ children }: WalletConnectProviderProps) 
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
 
+  const clientRef = useRef<SignClient | null>(null);
+
   const connect = async () => {
+    console.log("signClient", signClient);
     if (!signClient) return { uri: "", approve: async () => {} };
     setIsConnecting(true);
     try {
@@ -133,6 +137,19 @@ export function WalletConnectProvider({ children }: WalletConnectProviderProps) 
     });
   };
 
+  const sendAsset = async (params: { from: string; to: string; assetName: string; issuer: string; amount: number }) => {
+    if (!signClient || !sessionTopic) throw new Error("Not connected");
+
+    return await signClient.request({
+      topic: sessionTopic,
+      chainId: "qubic:mainnet",
+      request: {
+        method: "qubic_sendAsset",
+        params,
+      },
+    });
+  };
+
   const signTransaction = async (params: {
     from: string;
     to: string;
@@ -179,40 +196,36 @@ export function WalletConnectProvider({ children }: WalletConnectProviderProps) 
   };
 
   useEffect(() => {
-    SignClient.init({
-      projectId: "2697d842a392d20a355416a260f58276",
-      metadata: {
-        name: "QXMR",
-        description: "QXMR - Qubic XMR Token",
-        url: window.location.origin,
-        icons: ["https://walletconnect.com/walletconnect-logo.png"],
-      },
-    }).then((client) => {
-      setSignClient(client);
+    let cancelled = false;
 
-      const storedTopic = localStorage.getItem("sessionTopic");
-      if (storedTopic) {
-        const session = client.session.get(storedTopic);
-        if (session) {
-          setSessionTopic(storedTopic);
-          setIsConnected(true);
-        } else {
-          localStorage.removeItem("sessionTopic");
-        }
+    (async () => {
+      if (clientRef.current) return;
+
+      try {
+        const client = await SignClient.init({
+          projectId: '2ef8bce217ccfdd670eb8e8ae32a7392',
+          relayUrl: "wss://relay.walletconnect.com",
+          metadata: {
+            name: "QXMR",
+            description: "QXMR",
+            url: window.location.origin,
+            icons: ["https://walletconnect.com/walletconnect-logo.png"],
+          },
+        });
+
+        if (cancelled) return;
+        clientRef.current = client;
+        setSignClient(client);
+        console.log("origin:", window.location.origin)
+        console.log("client", client);
+      } catch (e) {
+        console.error("SignClient.init failed:", e);
       }
+    })();
 
-      client.on("session_delete", () => {
-        setSessionTopic("");
-        setIsConnected(false);
-        localStorage.removeItem("sessionTopic");
-      });
-
-      client.on("session_expire", () => {
-        setSessionTopic("");
-        setIsConnected(false);
-        localStorage.removeItem("sessionTopic");
-      });
-    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const contextValue: WalletConnectContextType = {
@@ -224,6 +237,7 @@ export function WalletConnectProvider({ children }: WalletConnectProviderProps) 
     disconnect,
     requestAccounts,
     sendQubic,
+    sendAsset,
     signTransaction,
     signMessage,
   };

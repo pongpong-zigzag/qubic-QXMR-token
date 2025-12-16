@@ -1453,6 +1453,25 @@ var drawDeadOttoSprite = function(ctx,x,y) {
 // draw pacman body
 var drawPacmanSprite = function(ctx,x,y,dirEnum,angle,mouthShift,scale,centerShift,alpha,color,rot_angle) {
 
+    if (typeof charImage !== 'undefined' && charImage && charImage.complete && charImage.naturalWidth > 0) {
+        if (scale == undefined) scale = 1;
+        if (alpha == undefined) alpha = 1;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.translate(x,y);
+        if (rot_angle) {
+            ctx.rotate(rot_angle);
+        }
+        var d90 = Math.PI/2;
+        if (dirEnum == DIR_UP) ctx.rotate(-d90);
+        else if (dirEnum == DIR_DOWN) ctx.rotate(d90);
+        else if (dirEnum == DIR_LEFT) ctx.rotate(Math.PI);
+        var imgSize = (tileSize-1)*2*scale;
+        ctx.drawImage(charImage, -imgSize/2, -imgSize/2, imgSize, imgSize);
+        ctx.restore();
+        return;
+    }
+
     if (mouthShift == undefined) mouthShift = 0;
     if (centerShift == undefined) centerShift = 0;
     if (scale == undefined) scale = 1;
@@ -1494,6 +1513,20 @@ var drawPacmanSprite = function(ctx,x,y,dirEnum,angle,mouthShift,scale,centerShi
 
 // draw giant pacman body
 var drawGiantPacmanSprite = function(ctx,x,y,dirEnum,frame) {
+
+    if (typeof charImage !== 'undefined' && charImage && charImage.complete && charImage.naturalWidth > 0) {
+        ctx.save();
+        ctx.translate(x,y);
+        var d90 = Math.PI/2;
+        if (dirEnum == DIR_UP) ctx.rotate(3*d90);
+        else if (dirEnum == DIR_RIGHT) ctx.rotate(0);
+        else if (dirEnum == DIR_DOWN) ctx.rotate(d90);
+        else if (dirEnum == DIR_LEFT) ctx.rotate(2*d90);
+        var imgSize = 32;
+        ctx.drawImage(charImage, -imgSize/2, -imgSize/2, imgSize, imgSize);
+        ctx.restore();
+        return;
+    }
 
     var color = "#FF0";
     var mouthShift = 0;

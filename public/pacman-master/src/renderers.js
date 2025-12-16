@@ -48,6 +48,9 @@ var foodImage = new Image();
 foodImage.src = 'icon/food.png';
 var cherryImage = new Image();
 cherryImage.src = 'icon/cherry.png';
+// XMR block image used for power pellets (energizers)
+var xmrImage = new Image();
+xmrImage.src = '/xmr-block.png';
 
 var initRenderer = function(){
 
@@ -112,19 +115,9 @@ var initRenderer = function(){
         center();
     };
 
-    // center the canvas in the window
+    // center logic is handled by the parent React overlay; avoid forcing a margin here
     var center = function() {
-        var s = getTargetScale()/getDevicePixelRatio();
-        var w = screenWidth*s;
-        var x = Math.max(0,(window.innerWidth-10)/2 - w/2);
-        var y = 0;
-        /*
-        canvas.style.position = "absolute";
-        canvas.style.left = x;
-        canvas.style.top = y;
-        console.log(canvas.style.left);
-        */
-        document.body.style.marginLeft = (window.innerWidth - w)/2 + "px";
+        document.body.style.marginLeft = '0px';
     };
 
     // create foreground and background canvases
@@ -902,10 +895,19 @@ var initRenderer = function(){
                 }
             }
             else if (tile == 'o') {
-                bgCtx.fillStyle = map.pelletColor;
-                bgCtx.beginPath();
-                bgCtx.arc(x*tileSize+midTile.x+0.5,y*tileSize+midTile.y,this.energizerSize/2,0,Math.PI*2);
-                bgCtx.fill();
+                // Draw power pellet using XMR block image
+                if (xmrImage.complete && xmrImage.naturalWidth > 0) {
+                    var imgSize = this.energizerSize;
+                    var centerX = x*tileSize+midTile.x - imgSize/2;
+                    var centerY = y*tileSize+midTile.y - imgSize/2;
+                    bgCtx.drawImage(xmrImage, centerX, centerY, imgSize, imgSize);
+                } else {
+                    // Fallback to original circle if image is not loaded
+                    bgCtx.fillStyle = map.pelletColor;
+                    bgCtx.beginPath();
+                    bgCtx.arc(x*tileSize+midTile.x+0.5,y*tileSize+midTile.y,this.energizerSize/2,0,Math.PI*2);
+                    bgCtx.fill();
+                }
             }
             if (!isTranslated) {
                 bgCtx.translate(-mapPad,-mapPad);

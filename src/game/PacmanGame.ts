@@ -296,13 +296,16 @@ class PacmanGame {
     if (this.qubicImageLoaded) {
       this.ctx.save();
       this.ctx.translate(this.qubic.x, this.qubic.y);
-      
+
+      // Flip vertically (SVG asset is upside down by default)
+      this.ctx.scale(1, -1);
+
       // Rotate based on direction
       if (this.qubic.direction.x !== 0 || this.qubic.direction.y !== 0) {
         const angle = Math.atan2(this.qubic.direction.y, this.qubic.direction.x);
         this.ctx.rotate(angle);
       }
-      
+
       this.ctx.drawImage(
         this.qubicImage,
         -this.qubic.size,

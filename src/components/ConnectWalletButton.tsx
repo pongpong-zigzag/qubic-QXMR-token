@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Wallet, LogOut } from 'lucide-react';
 import { useQubicConnect } from './connect/QubicConnectContext';
 import ConnectModal from './connect/ConnectModal';
@@ -15,8 +15,30 @@ const ConnectWalletButton: React.FC<ConnectWalletButtonProps> = ({
   const { connected, wallet, toggleConnectModal, showConnectModal, disconnect } = useQubicConnect();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  useEffect(() => {
+    try {
+      const shouldResume = localStorage.getItem('connectModalOpen') === '1';
+      if (shouldResume) {
+        setIsModalOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const handleConnect = () => {
     setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    try {
+      localStorage.removeItem('connectModalOpen');
+      localStorage.removeItem('connectModalResumeMode');
+      localStorage.removeItem('walletConnectPending');
+    } catch {
+      // ignore
+    }
   };
 
   const handleDisconnect = () => {
@@ -42,7 +64,7 @@ const ConnectWalletButton: React.FC<ConnectWalletButtonProps> = ({
           <span className="hidden sm:inline">{truncateAddress(wallet.publicKey)}</span>
           <span className="sm:hidden">Connected</span>
         </button>
-        <ConnectModal open={isModalOpen} onClose={() => setIsModalOpen(false)} />
+        <ConnectModal open={isModalOpen} onClose={handleCloseModal} />
       </>
     );
   }
@@ -51,17 +73,17 @@ const ConnectWalletButton: React.FC<ConnectWalletButtonProps> = ({
     <>
       <button
         onClick={handleConnect}
-        className={`flex items-center gap-2 rounded-lg px-4 py-2 font-medium transition-all duration-200 ${
+        className={`w-full h-10 px-6 rounded-2xl font-semibold transition-colors flex items-center justify-center gap-3 ${
           variant === 'outline'
             ? 'border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10'
-            : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500 shadow-lg hover:shadow-cyan-500/50'
-        } ${size === 'sm' ? 'text-sm py-1.5 px-3' : size === 'lg' ? 'text-base py-2.5 px-5' : 'text-sm'}`}
+            : 'bg-[#7CF8FF] hover:bg-[#9CFCFF] text-slate-900'
+        } ${size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-base' : 'text-sm'}`}
       >
         <Wallet size={16} className="flex-shrink-0" />
         <span className="hidden sm:inline">Connect Wallet</span>
         <span className="sm:hidden">Connect</span>
       </button>
-      <ConnectModal open={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <ConnectModal open={isModalOpen} onClose={handleCloseModal} />
     </>
   );
 };
