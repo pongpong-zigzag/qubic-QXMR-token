@@ -103,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({ scrolled }) => {
               onClick={() => navigate('/game')}
               className="hover:text-electricAccent transition-colors bg-transparent border-none cursor-pointer text-inherit"
             >
-              Game
+              P2E Game
             </button>
 
             <Link to="/power-players" className="hover:text-electricAccent transition-colors">
@@ -179,7 +179,7 @@ export const Header: React.FC<HeaderProps> = ({ scrolled }) => {
               }}
               className="hover:text-electricAccent transition-colors py-2 text-left bg-transparent border-none cursor-pointer text-inherit w-full"
             >
-              Game
+              P2E Game
             </button>
 
             <Link 

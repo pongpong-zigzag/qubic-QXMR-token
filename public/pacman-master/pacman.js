@@ -3018,21 +3018,28 @@ var atlas = (function(){
     };
 
     var copyFruitSprite = function(destCtx,x,y,name) {
+        // Force all fruits to render as cherry.png when available,
+        // regardless of their logical name, for a consistent look.
+        if (typeof cherryImage !== 'undefined' && cherryImage && cherryImage.complete && cherryImage.naturalWidth > 0) {
+            var size = tileSize || 8;
+            destCtx.drawImage(cherryImage, x - size/2, y - size/2, size, size);
+            return;
+        }
+
+        // Fallback to original sprite-sheet mapping if cherry image is not loaded
         var row = 0;
         var col = {
             "cherry": 0,
             "strawberry": 1,
             "orange": 2,
-            "apple": 3,
-            "melon": 4,
-            "galaxian": 5,
-            "bell": 6,
-            "key": 7,
-            "pretzel": 8,
-            "pear": 9,
-            "banana": 10,
-            "cookie": 11,
-            "cookieface": 12,
+            "pretzel": 3,
+            "apple": 4,
+            "pear": 5,
+            "banana": 6,
+            "melon": 7,
+            "galaxian": 8,
+            "bell": 9,
+            "key": 10,
         }[name];
 
         copyCellTo(row,col,destCtx,x,y);
@@ -3107,6 +3114,9 @@ var foodImage = new Image();
 foodImage.src = 'icon/food.png';
 var cherryImage = new Image();
 cherryImage.src = 'icon/cherry.png';
+// XMR block image used for power pellets (energizers)
+var xmrImage = new Image();
+xmrImage.src = '/xmr-block.png';
 var initRenderer = function(){
 
     var bgCanvas;
@@ -3161,6 +3171,7 @@ var initRenderer = function(){
     // maximize the scale to fit the window
     var fullscreen = function() {
         // NOTE: css-scaling alternative at https://gist.github.com/1184900
+        // Use the target scale directly so the canvas size matches the game viewport
         renderScale = scale = getTargetScale();
         resetCanvasSizes();
         atlas.create();
@@ -3170,19 +3181,9 @@ var initRenderer = function(){
         center();
     };
 
-    // center the canvas in the window
+    // center logic is handled by the parent React overlay; avoid forcing a margin here
     var center = function() {
-        var s = getTargetScale()/getDevicePixelRatio();
-        var w = screenWidth*s;
-        var x = Math.max(0,(window.innerWidth-10)/2 - w/2);
-        var y = 0;
-        /*
-        canvas.style.position = "absolute";
-        canvas.style.left = x;
-        canvas.style.top = y;
-        console.log(canvas.style.left);
-        */
-        document.body.style.marginLeft = (window.innerWidth - w)/2 + "px";
+        document.body.style.marginLeft = '0px';
     };
 
     // create foreground and background canvases
@@ -3657,13 +3658,22 @@ var initRenderer = function(){
 
         // draw energizer items on foreground
         drawEnergizers: function() {
-            ctx.fillStyle = this.energizerColor;
             var e;
             var i;
             for (i=0; i<map.numEnergizers; i++) {
                 e = map.energizers[i];
-                if (map.currentTiles[e.x+e.y*map.numCols] == 'o')
-                    this.drawCenterTileSq(ctx,e.x,e.y,this.energizerSize);
+                if (map.currentTiles[e.x+e.y*map.numCols] == 'o') {
+                    // Prefer food.png image for big pellets if loaded
+                    if (typeof foodImage !== 'undefined' && foodImage && foodImage.complete && foodImage.naturalWidth > 0) {
+                        var size = this.energizerSize;
+                        var px = e.x * tileSize + midTile.x;
+                        var py = e.y * tileSize + midTile.y;
+                        ctx.drawImage(foodImage, px - size/2, py - size/2, size, size);
+                    } else {
+                        ctx.fillStyle = this.energizerColor;
+                        this.drawCenterTileSq(ctx,e.x,e.y,this.energizerSize);
+                    }
+                }
             }
         },
 
@@ -3983,10 +3993,19 @@ var initRenderer = function(){
                 }
             }
             else if (tile == 'o') {
-                bgCtx.fillStyle = map.pelletColor;
-                bgCtx.beginPath();
-                bgCtx.arc(x*tileSize+midTile.x+0.5,y*tileSize+midTile.y,this.energizerSize/2,0,Math.PI*2);
-                bgCtx.fill();
+                // Draw power pellet using XMR block image
+                if (xmrImage.complete && xmrImage.naturalWidth > 0) {
+                    var imgSize = this.energizerSize;
+                    var centerX = x*tileSize+midTile.x - imgSize/2;
+                    var centerY = y*tileSize+midTile.y - imgSize/2;
+                    bgCtx.drawImage(xmrImage, centerX, centerY, imgSize, imgSize);
+                } else {
+                    // Fallback to original circle if image is not loaded
+                    bgCtx.fillStyle = map.pelletColor;
+                    bgCtx.beginPath();
+                    bgCtx.arc(x*tileSize+midTile.x+0.5,y*tileSize+midTile.y,this.energizerSize/2,0,Math.PI*2);
+                    bgCtx.fill();
+                }
             }
             if (!isTranslated) {
                 bgCtx.translate(-mapPad,-mapPad);
@@ -4073,11 +4092,16 @@ var initRenderer = function(){
                     var centerX = pixel.x - imgSize/2;
                     var centerY = pixel.y - imgSize/2;
                     ctx.save();
-                    // Rotate based on direction
+                    // Orient based on direction
                     ctx.translate(pixel.x, pixel.y);
-                    if (dirEnum == DIR_UP) ctx.rotate(-Math.PI/2);
-                    else if (dirEnum == DIR_DOWN) ctx.rotate(Math.PI/2);
-                    else if (dirEnum == DIR_LEFT) ctx.rotate(Math.PI);
+                    if (dirEnum == DIR_UP) {
+                        ctx.rotate(-Math.PI/2);
+                    } else if (dirEnum == DIR_DOWN) {
+                        ctx.rotate(Math.PI/2);
+                    } else if (dirEnum == DIR_LEFT) {
+                        // Mirror horizontally instead of rotating 180deg to avoid upside-down
+                        ctx.scale(-1, 1);
+                    }
                     ctx.translate(-pixel.x, -pixel.y);
                     ctx.drawImage(charImage, centerX, centerY, imgSize, imgSize);
                     ctx.restore();
@@ -4106,6 +4130,24 @@ var initRenderer = function(){
             var frame = pacman.getAnimFrame();
 
             if (gameMode == GAME_PACMAN) {
+                // If we have char.png, use it for the entire death animation
+                if (typeof charImage !== "undefined" && charImage && charImage.complete && charImage.naturalWidth > 0) {
+                    var maxSize = (tileSize-1)*2;
+                    // t goes from 0 to 1 over the whole death; shrink and fade out
+                    var scale = 1 - 0.7*t; // don't disappear too fast
+                    if (scale < 0) scale = 0;
+                    var alpha = 1 - t;
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(pacman.pixel.x, pacman.pixel.y);
+                    var drawSize = maxSize*scale;
+                    ctx.drawImage(charImage, -drawSize/2, -drawSize/2, drawSize, drawSize);
+                    ctx.restore();
+                    return;
+                }
+
+                // Fallback: original yellow Pac-Man death animation
                 // 60 frames dying
                 // 15 frames exploding
                 var f = t*75;
@@ -6372,6 +6414,33 @@ var drawDeadOttoSprite = function(ctx,x,y) {
 
 // draw pacman body
 var drawPacmanSprite = function(ctx,x,y,dirEnum,angle,mouthShift,scale,centerShift,alpha,color,rot_angle) {
+
+    // Prefer char.png everywhere Pac-Man is drawn (including cutscenes),
+    // fall back to vector Pac-Man if the image is unavailable.
+    if (typeof charImage !== "undefined" && charImage && charImage.complete && charImage.naturalWidth > 0) {
+        var size = tileSize || 8;
+        var centerX = x - size/2;
+        var centerY = y - size/2;
+        ctx.save();
+        ctx.translate(x, y);
+        // Apply optional extra rotation (used by some animations)
+        if (rot_angle) {
+            ctx.rotate(rot_angle);
+        }
+        // Orient based on direction
+        if (dirEnum == DIR_UP) {
+            ctx.rotate(-Math.PI/2);
+        } else if (dirEnum == DIR_DOWN) {
+            ctx.rotate(Math.PI/2);
+        } else if (dirEnum == DIR_LEFT) {
+            // Mirror horizontally for left-facing
+            ctx.scale(-1, 1);
+        }
+        ctx.translate(-x, -y);
+        ctx.drawImage(charImage, centerX, centerY, size, size);
+        ctx.restore();
+        return;
+    }
 
     if (mouthShift == undefined) mouthShift = 0;
     if (centerShift == undefined) centerShift = 0;
@@ -10071,6 +10140,7 @@ var preNewGameState = (function() {
 
     var menu = new Menu("",2*tileSize,0,mapWidth-4*tileSize,3*tileSize,tileSize,tileSize+"px ArcadeR", "#EEE");
 
+    // Single main-menu option: PLAY
     menu.addSpacer(2);
     menu.addTextButton("PLAY",
         function() { 
@@ -10079,34 +10149,6 @@ var preNewGameState = (function() {
             newGameState.setStartLevel(1);
             exitTo(newGameState, 60);
         });
-    menu.addTextButton("PLAY TURBO",
-        function() { 
-            practiceMode = false;
-            turboMode = true;
-            newGameState.setStartLevel(1);
-            exitTo(newGameState, 60);
-        });
-    menu.addTextButton("PRACTICE",
-        function() { 
-            practiceMode = true;
-            turboMode = false;
-            exitTo(selectActState);
-        });
-    menu.addSpacer(0.5);
-    menu.addTextButton("CUTSCENES",
-        function() { 
-            exitTo(cutSceneMenuState);
-        });
-    menu.addTextButton("ABOUT",
-        function() { 
-            exitTo(aboutGameState);
-        });
-    menu.addSpacer(0.5);
-    menu.addTextButton("BACK",
-        function() {
-            exitTo(homeState);
-        });
-    menu.backButton = menu.buttons[menu.buttonCount-1];
 
     return {
         init: function() {

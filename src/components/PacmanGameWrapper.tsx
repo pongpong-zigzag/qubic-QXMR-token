@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ArrowLeft, Trophy, ShoppingCart } from 'lucide-react';
+import { X, ArrowLeft } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { useQubicConnect } from './connect/QubicConnectContext';
 import { startGame } from '../services/backend.service';
@@ -20,7 +20,6 @@ const PacmanGameWrapper: React.FC<PacmanGameWrapperProps> = ({ onClose }) => {
   const [currentScore, setCurrentScore] = useState(0);
   const [gameHighScore, setGameHighScore] = useState(0);
   const [canPlay, setCanPlay] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
   const lastScoreRef = useRef(0);
   const gameEndHandledRef = useRef(false);
   const startGameCalledRef = useRef(false); // Track if startGame has been called
@@ -29,7 +28,7 @@ const PacmanGameWrapper: React.FC<PacmanGameWrapperProps> = ({ onClose }) => {
   const handleGameEnd = React.useCallback(async (score: number) => {
     if (!connected || !wallet?.publicKey) {
       console.log('Not connected, skipping score update');
-      toast.info(`Game Over! Score: ${score} points. Connect wallet to save your score.`);
+      toast(`Game Over! Score: ${score} points. Connect wallet to save your score.`);
       return;
     }
 
@@ -141,7 +140,6 @@ const PacmanGameWrapper: React.FC<PacmanGameWrapperProps> = ({ onClose }) => {
           const result = await startGame(wallet.publicKey);
           if (result.can_play) {
             setCanPlay(true);
-            setGameStarted(true);
             await refreshUser(); // Refresh to get updated user data
           } else {
             setCanPlay(true); // Still allow free play
@@ -166,7 +164,6 @@ const PacmanGameWrapper: React.FC<PacmanGameWrapperProps> = ({ onClose }) => {
       } else {
         // No wallet connected - allow free play
         setCanPlay(true);
-        setGameStarted(true);
       }
     };
 
@@ -189,7 +186,7 @@ const PacmanGameWrapper: React.FC<PacmanGameWrapperProps> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/90 backdrop-blur-sm" style={{ paddingTop: '80px', paddingBottom: '20px' }}>
-      <div className="w-full h-full flex flex-col items-center justify-center px-4 py-8">
+      <div className="w-full max-w-1xl flex flex-col items-center justify-center px-4 py-6 mx-auto">
         {/* Header with Back Button */}
         <div className="absolute top-20 left-4 z-10">
           <button
@@ -211,7 +208,7 @@ const PacmanGameWrapper: React.FC<PacmanGameWrapperProps> = ({ onClose }) => {
         </button>
 
         {/* Game Container */}
-        <div className="w-full max-w-[1200px] aspect-square max-h-[80vh] bg-black rounded-lg overflow-hidden shadow-2xl border border-cyan-500/30 relative">
+        <div className="w-full max-w-[880px] aspect-[3/4] max-h-[90vh] bg-black rounded-lg overflow-hidden shadow-2xl border border-cyan-500/30 relative mx-auto">
           {canPlay && (
             <iframe
               ref={iframeRef}
@@ -277,7 +274,6 @@ const PacmanGameWrapper: React.FC<PacmanGameWrapperProps> = ({ onClose }) => {
               const result = await startGame(wallet.publicKey);
               if (result.can_play) {
                 setCanPlay(true);
-                setGameStarted(true);
                 await refreshUser();
               } else {
                 startGameCalledRef.current = false;

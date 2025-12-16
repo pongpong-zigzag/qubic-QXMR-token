@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Trophy, Users, Award } from 'lucide-react';
+import { X, Trophy, Users, Award, Wallet } from 'lucide-react';
 import { getLeaderboard, LeaderboardResponse } from '../services/backend.service';
 import { useQubicConnect } from './connect/QubicConnectContext';
 import { useUser } from '../contexts/UserContext';
@@ -40,6 +40,11 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ isOpen, onClose }) 
   const formatAmount = (amount: string) => {
     const num = parseFloat(amount || '0');
     return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  };
+
+  const formatWallet = (walletId: string) => {
+    if (!walletId) return '--';
+    return `${walletId.substring(0, 6)}…${walletId.substring(walletId.length - 6)}`;
   };
 
   return (
@@ -96,12 +101,22 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ isOpen, onClose }) 
                 </div>
                 <div className="rounded-2xl border border-white/15 bg-white/5 p-5">
                   <div className="flex items-center gap-2 text-white/70 text-xs uppercase tracking-[0.3em] mb-2">
-                    <Trophy className="w-4 h-4 text-purple-300" />
-                    Your score
+                    <Wallet className="w-4 h-4 text-purple-300" />
+                    Wallet
                   </div>
-                  <p className="text-3xl font-semibold text-purple-200">
-                    {user ? formatAmount(user.amount) : '--'}
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-base font-semibold text-white/90 font-mono break-all">{wallet?.publicKey ? formatWallet(wallet.publicKey) : '--'}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.25em] text-white/40">ATH</p>
+                        <p className="text-lg font-semibold text-purple-200">{user ? formatAmount(user.highest) : '--'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.25em] text-white/40">Current total</p>
+                        <p className="text-lg font-semibold text-cyan-200">{user ? formatAmount(user.amount) : '--'}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -132,11 +147,12 @@ const LeaderboardModal: React.FC<LeaderboardModalProps> = ({ isOpen, onClose }) 
                         <p className={`font-medium truncate ${isCurrentUser ? 'text-electric' : 'text-white'}`}>
                           {isCurrentUser ? 'You' : `${player.walletid.substring(0, 6)}…${player.walletid.substring(player.walletid.length - 6)}`}
                         </p>
-                        <p className="text-xs text-white/60">Highest: {formatAmount(player.highest)}</p>
+                        <p className="text-xs text-white/60">Current total: {formatAmount(player.amount)}</p>
+                        <p className="text-xs text-white/45">ATH: {formatAmount(player.highest)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-semibold text-white">{formatAmount(player.amount)}</p>
-                        <p className="text-[11px] uppercase tracking-[0.25em] text-white/40">Score</p>
+                        <p className="text-lg font-semibold text-white">{formatAmount(player.highest)}</p>
+                        <p className="text-[11px] uppercase tracking-[0.25em] text-white/40">Current High Score</p>
                       </div>
                     </div>
                   );

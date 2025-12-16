@@ -9,7 +9,7 @@ interface BuyGamesModalProps {
   onPurchaseComplete: () => void;
 }
 
-const GAME_PRICE = 500000; // 500000 QXMR tokens per game
+const GAME_PRICE = 10000; // 10000 QXMR tokens per game
 
 const BuyGamesModal: React.FC<BuyGamesModalProps> = ({ isOpen, onClose, onPurchaseComplete }) => {
   const { wallet, connected } = useQubicConnect();
@@ -72,7 +72,7 @@ const BuyGamesModal: React.FC<BuyGamesModalProps> = ({ isOpen, onClose, onPurcha
           </div>
 
           <p className="text-sm text-white/80 leading-relaxed">
-            Each connected run costs <span className="text-electric font-semibold">500,000 QXMR</span>. Pick how many sessions you
+            Each connected run costs <span className="text-electric font-semibold">10,000 QXMR</span>. Pick how many sessions you
             want to preload and we’ll route the purchase through your Qubic wallet.
           </p>
 
@@ -110,7 +110,7 @@ const BuyGamesModal: React.FC<BuyGamesModalProps> = ({ isOpen, onClose, onPurcha
               <p className="text-xs uppercase tracking-[0.35em] text-white/60 mb-1">Total cost</p>
               <p className="text-3xl font-semibold text-electric">{totalPrice.toLocaleString()} QXMR</p>
               <p className="text-xs text-white/60 mt-1">
-                {gamesToBuy} game{gamesToBuy !== 1 ? 's' : ''} × 500,000 QXMR
+                {gamesToBuy} game{gamesToBuy !== 1 ? 's' : ''} × 10,000 QXMR
               </p>
             </div>
             <div className="rounded-2xl border border-white/15 bg-black/40 p-5">

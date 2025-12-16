@@ -9,6 +9,7 @@ import {
 } from "@qubic-lib/qubic-ts-library/dist/crypto";
 
 export const uint8ArrayToBase64 = (uint8Array: Uint8Array): string => {
+  if (!uint8Array || uint8Array.length === 0) return "";
   const binaryString = String.fromCharCode.apply(null, Array.from(uint8Array));
   return btoa(binaryString);
 };

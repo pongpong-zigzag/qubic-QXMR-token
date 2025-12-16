@@ -51,25 +51,72 @@ export const fetchBalance = async (publicId: string): Promise<Balance> => {
 
     const QXMR_ISSUER = "QXMRTKAIIGLUREPIQPCMHCKWSIPDTUYFCFNYXQLTECSUJVYEMMDELBMDOEYB";
 
-    const res = await fetch(`${RPC_URL}/v1/assets/${publicId}/owned`);
+    const normalizedPublicId = (publicId || "").toUpperCase().trim();
+    const normalizedIssuer = QXMR_ISSUER.toUpperCase().trim();
+
+    const res = await fetch(`${RPC_URL}/v1/assets/${normalizedPublicId}/owned`);
     if (!res.ok) {
       console.warn("fetchBalance: HTTP error", res.status);
       return {};
     }
     const payload = await res.json();
-    const qxmr = payload.ownedAssets.find(
-      (asset: any) => asset?.data?.issuedAsset?.name === 'QXMR' && asset?.data?.issuedAsset?.issuerIdentity === QXMR_ISSUER && asset?.data?.type === 2
-    );
-    if (!qxmr || !qxmr.data?.numberOfUnits) {
-      console.warn("fetchBalance: Invalid balance response structure");
+
+    const ownedAssets = Array.isArray(payload?.ownedAssets)
+      ? payload.ownedAssets
+      : Array.isArray(payload?.data?.ownedAssets)
+        ? payload.data.ownedAssets
+        : [];
+
+    const qxmr = ownedAssets.find((asset: any) => {
+      const issued = asset?.data?.issuedAsset;
+      const name = String(issued?.name ?? "").toUpperCase().trim();
+      const issuerIdentity = String(issued?.issuerIdentity ?? "").toUpperCase().trim();
+      return name === "QXMR" && issuerIdentity === normalizedIssuer;
+    });
+
+    const qxmrByNameOnly = qxmr
+      ? null
+      : ownedAssets.filter((asset: any) => {
+          const issued = asset?.data?.issuedAsset;
+          const name = String(issued?.name ?? "").toUpperCase().trim();
+          return name === "QXMR";
+        });
+
+    const selectedAsset = qxmr || (qxmrByNameOnly && qxmrByNameOnly.length === 1 ? qxmrByNameOnly[0] : null);
+
+    if (!qxmr && selectedAsset && qxmrByNameOnly) {
+      const issued = selectedAsset?.data?.issuedAsset;
+      console.warn("fetchBalance: Using QXMR match by name only (issuer mismatch)", {
+        expectedIssuer: normalizedIssuer,
+        foundIssuer: issued?.issuerIdentity,
+      });
+    }
+
+    const unitsRaw = selectedAsset?.data?.numberOfUnits;
+    const unitsNum = unitsRaw === undefined || unitsRaw === null ? NaN : Number(unitsRaw);
+
+    if (!selectedAsset || Number.isNaN(unitsNum)) {
+      const assetSummary = ownedAssets.slice(0, 20).map((a: any) => {
+        const issued = a?.data?.issuedAsset;
+        return {
+          name: issued?.name,
+          issuerIdentity: issued?.issuerIdentity,
+          type: a?.data?.type,
+          numberOfUnits: a?.data?.numberOfUnits,
+        };
+      });
+      console.warn("fetchBalance: QXMR asset not found for publicId", normalizedPublicId, {
+        ownedAssetsCount: ownedAssets.length,
+        ownedAssetsSample: assetSummary,
+      });
       return {};
     }
     return {
       balance: {
-        numberOfUnits: Number(qxmr.data?.numberOfUnits),
-        type: Number(qxmr.data?.type),
-        issuerIdentity: String(qxmr.data?.issuedAsset?.issuerIdentity),
-        assetName: String(qxmr.data?.issuedAsset?.name),
+        numberOfUnits: unitsNum,
+        type: Number(selectedAsset.data?.type),
+        issuerIdentity: String(selectedAsset.data?.issuedAsset?.issuerIdentity),
+        assetName: String(selectedAsset.data?.issuedAsset?.name),
       }
     };
   } catch (error) {
